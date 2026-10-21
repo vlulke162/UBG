@@ -1,0 +1,160 @@
+<html>
+
+<head>
+  <script>
+    window.gameconfig = {
+      name: "TBOIRPSP0301",
+      url: "https://cdn.jsdelivr.net/gh/NoahsAmazingTutoringHelp/musical-octo-dollop/tboirpsp0301.iso",
+      core: "psp",
+      min: 0,
+      max: 6
+    };
+  </script>
+  <script>
+    async function fetchPartWithRetry(url, attempts = 6) {
+  const waits = [0, 500, 1500, 5000, 15000, 30000];
+  let last = null;
+  for (let i = 0; i < attempts; i++) {
+    if (i > 0) {
+      await new Promise(function (r) { setTimeout(r, waits[Math.min(i, waits.length - 1)]); });
+      console.warn('retry ' + i + '/' + (attempts - 1) + ' for ' + url);
+    }
+    try {
+      const res = await fetch(url, { mode: 'cors', cache: i ? 'no-store' : 'force-cache' });
+      if (res.ok) return res;
+      last = new Error('HTTP ' + res.status + ' on ' + url);
+      const retryable = res.status === 403 || res.status === 404 || res.status === 429 || res.status >= 500;
+      if (!retryable) throw last;
+    } catch (err) {
+      last = err;
+    }
+  }
+  throw last || new Error('failed: ' + url);
+}
+
+async function mergeFiles(fileParts, cb) {
+      const buffers = [];
+      let loaded = 0;
+
+      for (const partUrl of fileParts) {
+        try {
+          const response = await fetchPartWithRetry(partUrl);
+          if (!response.ok) throw new Error(`Network error on ${partUrl}`);
+
+          const data = await response.arrayBuffer();
+          buffers.push(data);
+
+          loaded++;
+
+          console.log(`Successfully fetched: ${partUrl} (${loaded}/${fileParts.length})`);
+
+          cb(loaded);
+
+          if (loaded % 10 === 0) {
+            await new Promise(resolve => setTimeout(resolve, 0));
+          }
+        } catch (err) {
+          console.error("Download failed:", err);
+          throw err;
+        }
+      }
+
+      const mergedBlob = new Blob(buffers, { type: "application/octet-stream" });
+      buffers.length = 0;
+
+      return URL.createObjectURL(mergedBlob);
+    }
+
+    function getParts(file, start, end) {
+      let parts = [];
+      for (let i = start; i <= end; i++) {
+        let padded = String(i).padStart(2, '0');
+        parts.push(file + ".part" + padded);
+      }
+      return parts;
+    }
+    getParts("asd.js", 0, 100)
+  </script>
+  <style>
+    body,
+    html {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      background-color: #121212;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+
+    #game-container {
+      text-align: center;
+      width: 100%;
+      height: 100%;
+    }
+
+    #loading-progress {
+      font-size: 18px;
+      margin-top: 20px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      display: inline-block;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="game-container">
+    <div id="game"></div>
+    <div id="loading-progress">Loading: 5/7</div>
+    <div id="first-time">First-time loading may take longer...</div>
+  </div>
+  <script>
+    var parts = getParts(
+      window.gameconfig.url,
+      window.gameconfig.min,
+      window.gameconfig.max
+    );
+    var totalParts = parts.length;
+
+    function updateLoadingProgress(loaded) {
+      const progressElement = document.getElementById("loading-progress");
+      if (loaded === 0) {
+        progressElement.textContent = "Loading: 0/0";
+      } else {
+        progressElement.textContent = `Loading: ${loaded}/${totalParts}`;
+      }
+    }
+
+    Promise.all([mergeFiles(parts, updateLoadingProgress)])
+      .then(([gameUrl]) => {
+        document.getElementById("loading-progress").remove();
+        document.getElementById("first-time").remove();
+        EJS_player = "#game";
+        EJS_core = window.gameconfig.core;
+        EJS_gameName = window.gameconfig.name;
+        EJS_color = "#0064ff";
+        EJS_startOnLoaded = true;
+        EJS_pathtodata = "https://cdn.jsdelivr.net/gh/bubblfan/emu@master/";
+        EJS_gameUrl = gameUrl;
+        EJS_threads = true;
+        const script = document.createElement("script");
+        script.src =
+          "https://cdn.jsdelivr.net/gh/bubblfan/emu@master/loader.js";
+        document.body.appendChild(script);
+      })
+      .catch((error) => {
+        console.error(error);
+        document.getElementById("loading-progress").textContent =
+          "Error loading game.";
+      });
+  </script>
+
+
+<style>.noah-wmk{position:fixed;bottom:20px;right:20px;z-index:999999;display:flex;flex-direction:column;align-items:center;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}.noah-wmk .wm-prefix{font-size:11px;font-weight:600;color:#d4d4d4;letter-spacing:0.02em;text-shadow:0 1px 3px rgba(0,0,0,0.8);margin-bottom:3px;white-space:nowrap;transition:color 0.2s}.noah-wmk img{display:block;height:34px;width:auto;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.6))}.noah-wmk:hover .wm-prefix{color:#f7931e}</style><a class="noah-wmk" href="https://noahstutoring.academy" target="_blank" rel="noopener"><span class="wm-prefix">Downloaded from</span><img src="https://cdn.jsdelivr.net/gh/NoahsAmazingTutoringHelp/Noahs-Calculus-Tutor@master/images/logo.png" alt="Noah's Tutoring Hub"></a></body>
+
+</html>
